@@ -51,13 +51,23 @@ const parseConfig = async () => {
 		process.exit(1);
 	}
 
-	/*try{
+	try{
+		Log.Info("Remove existing temp projects directory");
+		await fs.rmdir(Config.ProjectsFolder, {recursive: true});
+	}catch(e){}
+
+	try{
+		Log.Info("Remove existing novnc tokens directory");
+		await fs.rmdir(Config.Simulation.TokenFolder, {recursive: true});
+	}catch(e){}
+
+	try{
 		Log.Info("Create new temp projects directory");
-		fs.mkdir(Config.ProjectsFolder, {recursive: true});
+		await fs.mkdir(Config.ProjectsFolder, {recursive: true});
 
 	}catch(e){
 		Log.Error("Error while creating projects directory", e);
-	}*/
+	}
 
 	try{
 		Log.Info("Current config:", Config);
