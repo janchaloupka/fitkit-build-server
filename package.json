@@ -1,0 +1,31 @@
+{
+	"name": "fitkit-build-server",
+	"version": "1.0.0",
+	"description": "Remote build server for VS Code FITkit extension",
+	"main": "out/main.js",
+	"scripts": {
+		"compile": "ttsc -p ./",
+		"lint": "eslint src --ext ts",
+		"watch": "ttsc -watch -p ./"
+	},
+	"author": "Jan Chaloupka",
+	"license": "MIT",
+	"devDependencies": {
+		"@types/jsonwebtoken": "^8.3.9",
+		"@types/mocha": "^7.0.1",
+		"@types/node": "^12.12.37",
+		"@types/websocket": "^1.0.0",
+		"@typescript-eslint/eslint-plugin": "^2.30.0",
+		"@typescript-eslint/parser": "^2.30.0",
+		"eslint": "^6.8.0",
+		"ttypescript": "^1.5.10",
+		"typescript": "^3.7.5"
+	},
+	"dependencies": {
+		"colors": "^1.4.0",
+		"jsonc-parser": "^2.2.1",
+		"jsonwebtoken": "^8.5.1",
+		"typescript-is": "^0.14.1",
+		"websocket": "^1.0.31"
+	}
+}
