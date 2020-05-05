@@ -25,7 +25,7 @@ export class Project{
 
 	private CrossPlatformBasename(path: string): string{
 		let splitPath = path.split(/[\\\/]/);
-		if(splitPath.length <= 1) throw new Error("Unable to create header file, invalid path");
+		if(splitPath.length <= 1) throw new Error("Unable to create file, invalid path");
 		return splitPath.pop() ?? path;
 	}
 
@@ -37,7 +37,17 @@ export class Project{
 
 		for (const file of this.ProjConf.Fpga.Files) {
 			const origPath = file.Path;
-			file.Path = hash(origPath) + ".vhd";
+			file.Path = this.CrossPlatformBasename(origPath);
+
+			// Test, zda se již soubor se stejným jménem v projektu nenachází
+			// V tom případě přidat suffix
+			let filePathTest = file.Path;
+			const splitExt = file.Path.split(".", 2);
+			for(let i = 1; Object.keys(this.MapToOriginalPath).includes(filePathTest);i++){
+				filePathTest = splitExt[0] + "_" + i + (splitExt[1] ? "." + splitExt[1] : "");
+			}
+
+			file.Path = filePathTest;
 			this.MapToOriginalPath[file.Path] = origPath;
 
 			await fs.writeFile(join(path, file.Path), new Buffer(file.Content, "base64"));
@@ -61,8 +71,8 @@ export class Project{
 
 		const ucf = this.ProjConf.Fpga.UcfFile;
 		const origUcfPath = ucf.Path;
+		ucf.Path = this.CrossPlatformBasename(origUcfPath);
 		this.MapToOriginalPath[ucf.Path] = origUcfPath;
-		ucf.Path = hash(origUcfPath) + ".ucf";
 		await fs.writeFile(join(path, ucf.Path), new Buffer(ucf.Content, "base64"));
 
 		const isimFile = this.ProjConf.Fpga.IsimFile;
