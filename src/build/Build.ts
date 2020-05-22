@@ -44,7 +44,7 @@ export class Build extends EventEmitter{
 
 	public static CheckQueue(){
 		const limit = Config.Build.MaxActiveTasks;
-		while(limit === -1 || this.Active.length <= limit){
+		while(limit === -1 || this.Active.length < limit){
 			const first = this.Queue.shift();
 			if(!first) break;
 

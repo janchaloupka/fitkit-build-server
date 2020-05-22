@@ -43,7 +43,7 @@ export class Simulation extends EventEmitter{
 
 	public static CheckQueue(){
 		const limit = Config.Simulation.MaxActiveSessions;
-		while(limit === -1 || this.Active.length <= limit){
+		while(limit === -1 || this.Active.length < limit){
 			const first = this.Queue.shift();
 			if(!first) break;
 
