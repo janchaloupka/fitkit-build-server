@@ -1,5 +1,10 @@
 import * as colors from "colors/safe";
 
+/**
+ * Logovací třída pro hezčí vypisování dat do konzole
+ *
+ * Umožňuje vypsání z jaké části kódu zpráva přišla
+ */
 export class Logger {
 	private Previous?: Logger;
 
@@ -10,6 +15,10 @@ export class Logger {
 		this.Prefix = prefix;
 	}
 
+	/**
+	 * Vypsat data do konzole (na standardní výstup)
+	 * @param params Data k vypsání do konzole
+	 */
 	public Info(...params: any[]) {
 		if(this.Prefix) params.unshift(`[${this.Prefix}]`);
 
@@ -18,6 +27,10 @@ export class Logger {
 		//else console.log(`[${(new Date()).toISOString()}]`, ...params);
 	}
 
+	/**
+	 * Vypsat chybodou hlášku (na stadardní chybový výstup)
+	 * @param params Data k vypsání do konzole
+	 */
 	public Error(...params: any[]) {
 		if(this.Prefix) params.unshift(`[${this.Prefix}]`);
 

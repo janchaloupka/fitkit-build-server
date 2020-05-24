@@ -20,14 +20,20 @@ export declare interface Build{
  * Proces sestavení FITkit projektu
  */
 export class Build extends EventEmitter{
+	/** Aktivní spuštěné procesy */
 	public static Active: Build[] = [];
+
+	/** Čekající procesy ve frontě */
 	public static Queue: Build[] = [];
 
 	private Process?: ChildProcessWithoutNullStreams;
 	private readonly Log: Logger;
 	private Terminated = false;
 
+	/** Cesta k dočasné složce projektu */
 	public readonly ProjectPath: string;
+
+	/** Je proces spuštěn */
 	public get Running() : boolean {
 		return !!Build.Active.find(b => b === this);
 	}
@@ -42,6 +48,11 @@ export class Build extends EventEmitter{
 		Build.Queue.push(this);
 	}
 
+	/**
+	 * Vyvolat kontrolu fronty
+	 *
+	 * (pokud je volno, spustí procesy na začátku fronty)
+	 */
 	public static CheckQueue(){
 		const limit = Config.Build.MaxActiveTasks;
 		while(limit === -1 || this.Active.length < limit){
@@ -57,6 +68,9 @@ export class Build extends EventEmitter{
 		}
 	}
 
+	/**
+	 * Spustit proces
+	 */
 	protected Start(){
 		// Odstranit z fronty a přidat na seznam aktivních simulací
 		Build.Queue = Build.Queue.filter(val => val !== this);
@@ -81,6 +95,10 @@ export class Build extends EventEmitter{
 		err.on("line", line => this.emit("stderr", line));
 	}
 
+	/**
+	 * Spuštěný podproces skončil
+	 * @param code Návratový kód procesu
+	 */
 	private async CloseEvent(code: number){
 		const result: BuildResult = {
 			ExitStatus: code
@@ -109,6 +127,9 @@ export class Build extends EventEmitter{
 		if(!this.Terminated) this.Terminate();
 	}
 
+	/**
+	 * Ukončit proces
+	 */
 	public Terminate(){
 		this.Terminated = true;
 

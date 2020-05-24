@@ -6,6 +6,9 @@ import * as http from "http";
 import * as jwt from "jsonwebtoken";
 import { promises as fs } from "fs";
 
+/**
+ * WebSocket server naslouchající a přijmající požadavky na připojení
+ */
 export class Server{
 	private Ws: WebSocketServer;
 	private Http: http.Server;
@@ -13,6 +16,9 @@ export class Server{
 
 	private AuthPublicKeyCache: string = "";
 
+	/**
+	 * Získat veřejný klíč JWT tokenu
+	 */
 	public async GetAuthPublicKey(): Promise<string> {
 		if(this.AuthPublicKeyCache !== "") return this.AuthPublicKeyCache;
 
@@ -21,7 +27,6 @@ export class Server{
 
 		return key;
 	}
-
 
 	public constructor(port: number, logger?: Logger, config?: IServerConfig){
 		this.Log = new Logger("Server", logger);
@@ -39,6 +44,11 @@ export class Server{
 		this.Ws.on("request", req => this.HandleWsRequest(req));
 	}
 
+	/**
+	 * Zpracovat klasický HTTP požadavek
+	 * @param request HTTP hlavička požadavku
+	 * @param response Odpověď serveru
+	 */
 	private HandleHttpRequest(request: http.IncomingMessage, response: http.ServerResponse){
 		response.writeHead(404);
     	response.end();

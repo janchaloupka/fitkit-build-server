@@ -3,11 +3,6 @@ import { ProjectData } from './../model/ProjectData';
 import { promises as fs } from "fs";
 import { join } from "path";
 import { CreateBuildFiles } from './BuildFiles';
-import { createHash } from "crypto";
-
-function hash(data: any): string {
-	return createHash("md5").update(data).digest("hex");
-};
 
 /**
  * Správa lokální složky projektu
@@ -17,18 +12,27 @@ export class Project{
 	public MapToOriginalPath: {[hashed: string]: string} = {};
 
 	private ProjConf: ProjectData;
+
+	/** Cestka k lokální složce projektu */
 	public Path?: string;
 
 	public constructor(project: ProjectData){
 		this.ProjConf = project;
 	}
 
+	/**
+	 * Získat název soboru z cesty.
+	 * Ceesta může být v UNIX nebo Windows formátu
+	 */
 	private CrossPlatformBasename(path: string): string{
 		let splitPath = path.split(/[\\\/]/);
 		if(splitPath.length <= 1) throw new Error("Unable to create file, invalid path");
 		return splitPath.pop() ?? path;
 	}
 
+	/**
+	 * Vytvořit dočasnou složku projektu včetně všech potřebných souborů
+	 */
 	public async CreateDirectory(): Promise<string>{
 		if(this.Path) await this.Delete();
 
@@ -87,6 +91,9 @@ export class Project{
 		return path;
 	}
 
+	/**
+	 * Odstranit dočasnou složku projektu
+	 */
 	public async Delete(){
 		if(!this.Path) return;
 

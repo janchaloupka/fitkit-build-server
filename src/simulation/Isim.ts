@@ -15,7 +15,10 @@ export class Isim extends EventEmitter{
 	private readonly Process: ChildProcessWithoutNullStreams;
 	private readonly Log: Logger;
 
+	/** Standardní výstup konzole podprocesu */
 	public readonly stdout: Readable;
+
+	/** Standardní chybový výstup podprocesu */
 	public readonly stderr: Readable;
 
 	public constructor(display: number, projectPath: string, logger?: Logger){
@@ -42,11 +45,18 @@ export class Isim extends EventEmitter{
 		this.stderr = this.Process.stderr;
 	}
 
+	/**
+	 * Simulační program se ukončil
+	 * @param code Návratový kód podprocesu
+	 */
 	private CloseEvent(code :number){
 		this.Log.Info(`Exited (${code})`);
 		this.emit("close", code);
 	}
 
+	/**
+	 * Ukončit podproces simulace
+	 */
 	public Terminate(){
 		if(this.Process.killed) return;
 		this.Process.kill();

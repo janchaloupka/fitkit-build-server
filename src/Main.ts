@@ -8,6 +8,10 @@ import { assertType } from "typescript-is";
 
 const Log = new Logger();
 
+/**
+ * Zpracovat konfigurační soubor, pokud některá věc není v configu, použít
+ * výchozí možnost
+ */
 const parseConfig = async () => {
 	Log.Info("Parsing config");
 	const configFile = await fs.readFile("config.jsonc", "utf8");

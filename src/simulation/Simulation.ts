@@ -14,6 +14,9 @@ export declare interface Simulation{
 	on(event: "isimerr", listener: (line: string) => void): this;
 }
 
+/**
+ * Hlavní proces simulace FITkit projektu
+ */
 export class Simulation extends EventEmitter{
 	public static Active: Simulation[] = [];
 	public static Queue: Simulation[] = [];
@@ -24,10 +27,15 @@ export class Simulation extends EventEmitter{
 	private readonly Log: Logger;
 	private Terminated = false;
 
+	/** Cesta k dočasné složce projektu */
 	public readonly ProjectPath: string;
+
+	/** Token pro připojení přes noVNC relaci */
 	public get Token(): string | undefined {
 		return this.Display?.Token;
 	}
+
+	/** Je proces spuštěn */
 	public get Running() : boolean {
 		return !!Simulation.Active.find(b => b === this);
 	}
@@ -41,6 +49,11 @@ export class Simulation extends EventEmitter{
 		Simulation.Queue.push(this);
 	}
 
+	/**
+	 * Vyvolat kontrolu fronty
+	 *
+	 * (pokud je volno, spustí procesy na začátku fronty)
+	 */
 	public static CheckQueue(){
 		const limit = Config.Simulation.MaxActiveSessions;
 		while(limit === -1 || this.Active.length < limit){
@@ -56,6 +69,9 @@ export class Simulation extends EventEmitter{
 		}
 	}
 
+	/**
+	 * Spustit proces
+	 */
 	protected Start(){
 		// Odstranit z fronty a přidat na seznam aktivních simulací
 
@@ -64,10 +80,17 @@ export class Simulation extends EventEmitter{
 		this.Display.on("ready", num => this.DisplayReady(num));
 	}
 
+	/**
+	 * Nějaký podproces (ISIM, WM, TigerVNC byl ukončen)
+	 */
 	private ProcessClosed(){
 		if(!this.Terminated) this.Terminate();
 	}
 
+	/**
+	 * Virtuální obrazovka je nachystaná pro zobrazení grafických aplikací
+	 * @param display Číslo cílové virtuální obrazovky
+	 */
 	private DisplayReady(display: number){
 		this.WindowManager = new WindowManager(display, this.Log);
 		this.WindowManager.on("close", () => this.ProcessClosed());
@@ -84,6 +107,9 @@ export class Simulation extends EventEmitter{
 		this.emit("ready", this.Token);
 	}
 
+	/**
+	 * Ukončit proces
+	 */
 	public Terminate(){
 		this.Terminated = true;
 

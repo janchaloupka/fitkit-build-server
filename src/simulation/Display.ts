@@ -17,6 +17,7 @@ export declare interface Display{
  * Virtuální obrazovka x11serveru pro zobrazení grafických aplikací
  */
 export class Display extends EventEmitter{
+	/** Základní port VNC serveru */
 	private static BasePort: number = 5900;
 
 	private readonly Process: ChildProcessWithoutNullStreams;
@@ -24,12 +25,15 @@ export class Display extends EventEmitter{
 	private _Number?: number;
 	private TokenFile?: string;
 
+	/** Token pro připojení přes noVNC relaci */
 	public readonly Token: string;
 
+	/** Číslo virtuální obrazovky */
 	public get Number(): number | undefined {
 		return this._Number;
 	}
 
+	/** HTTP port, na kterém je VNC stream dostupný */
 	public get Port(): number | undefined{
 		if(this._Number === undefined) return;
 
@@ -59,6 +63,10 @@ export class Display extends EventEmitter{
 		// TODO timeout pokud se za rozumnou dobu nezíská číslo obrazovky
 	}
 
+	/**
+	 * Podproces vnc serveru byl ukončen
+	 * @param code Návratový kód podprocesu
+	 */
 	private async CloseEvent(code: number){
 		this.Log.Info(`Exited (${code})`);
 
@@ -73,6 +81,10 @@ export class Display extends EventEmitter{
 		this.emit("close", code);
 	}
 
+	/**
+	 * Přijmout číslo nově vytvořeného virtuálníhho displeje po spuštění
+	 * @param num Číslo displeje
+	 */
 	private async ReceiveDisplayNumber(num: Buffer){
 		let number = parseInt(num.toString().trim(), 10);
 		if(number.toString() !== num.toString().trim()) return;
@@ -92,6 +104,9 @@ export class Display extends EventEmitter{
 		this.emit("ready", this.Number);
 	}
 
+	/**
+	 * Ukončit podproces
+	 */
 	public Terminate(){
 		if(this.Process.killed) return;
 		this.Process.kill('SIGTERM');

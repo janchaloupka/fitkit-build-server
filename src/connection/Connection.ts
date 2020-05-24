@@ -176,6 +176,10 @@ export class Connection{
 		Simulation.CheckQueue();
 	}
 
+	/**
+	 * Spojení s klientem bylo ukončeno
+	 * @param code Chybový návratový kód
+	 */
 	private Closed(code: number){
 		// Odstranit klienta z pole aktivních klientů
 		Connection.Active = Connection.Active.filter(val => val !== this);

@@ -33,11 +33,18 @@ export class WindowManager extends EventEmitter{
 		this.Process.on("close", code => this.CloseEvent(code));
 	}
 
-	private CloseEvent(code :number){
+	/**
+	 * Podproces správce oken se ukončil
+	 * @param code Návratový kód podprocesu
+	 */
+	private CloseEvent(code: number){
 		this.Log.Info(`Exited (${code})`);
 		this.emit("close", code);
 	}
 
+	/**
+	 * Ukončit podproces
+	 */
 	public Terminate(){
 		if(this.Process.killed) return;
 		this.Process.kill();
