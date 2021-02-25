@@ -1,15 +1,22 @@
 import { ProjectData } from './ProjectData';
 
-interface MessageProject{
-	type: "build-begin" | "isim-begin";
-	data: ProjectData;
+interface MessageRequest {
+    type: "cancel_job" | "get_supported_jobs" | "get_server_stats";
 }
 
-interface MessageVoid{
-	type: "build-end" | "isim-end";
+interface MessageNewJob {
+    type: "new_job";
+    platform: "fitkit2";
+    name: string;
+    userArgs: string[];
+}
+
+interface MessageJobData {
+	type: "job_data";
+	data: ProjectData;
 }
 
 /**
  * Websocket zpráva klient -> server
  */
-export type ClientMessage = MessageVoid | MessageProject;
+export type ClientMessage = MessageRequest | MessageNewJob | MessageJobData;

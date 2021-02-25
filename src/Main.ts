@@ -1,4 +1,4 @@
-import { ServerConfig } from './model/ServerConfig';
+import { ServerConfig } from './model/Config';
 import { Config } from './Config';
 import { Logger } from './Logger';
 import { Server } from './connection/Server';

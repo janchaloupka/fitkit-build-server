@@ -1,0 +1,99 @@
+# Konfigurační soubor překladového serveru.
+
+# TCP port, na kterém naslouchá WebSocket server pro přijímání
+# požadavků od klientů
+port: 9000
+
+# Absolutní cesta ke složce, kde budou dočasně uloženy nahrané
+# projekty klientů.
+#
+# Server musí mít právo čtení a zápisu a musí tuto složku vlastnit.
+# Po startu server tuto složku vytvoří pokud neexistuje, nebo vymaže
+# stávájící obsah složky.
+projectsFolder: /tmp/fitkit-projects
+
+vnc:
+  # Absolutní cesta ke složce, kde Websockify (noVNC) služba očekává
+  # tokeny pro vytvoření spojení a kde se tyto soubory budou vytvářet.
+  #
+  # Server musí mít právo zápisu do této složky.
+  # Po startu server tuto složku vytvoří pokud neexistuje, nebo vymaže
+  # stávájící obsah složky.
+  tokenFolder: /tmp/vnc-tokens
+
+  # Webová adresa, která je odeslána klientovi po vytvoření sezení.
+  # K adrese je přidán vygenerovaný token.
+  clientUrl: http://10.69.69.13:9010/
+
+# Nastavení autentizace klientů
+auth:
+  # Cesta k souboru s veřejným klíčem autorizačního serveru pro validaci JWT tokenu
+  publicKeyPath: ./jwt.key.pub
+
+  # Seznam povolených algoritmů pro validaci JWT tokenu
+  allowedAlg:
+    - RS256
+    - RS384
+    - RS512
+
+# Základní nastavení kontejneru pro běh úloh
+containers:
+  # Název docker obrazu pro vytvoření kontejneru
+  - image: fitkit2
+    # Společné argumenty spuštění kontejneru
+    sharedArgs: ['-i', '--rm', '--read-only', '-v', '/opt/Xilinx:/opt/Xilinx:ro']
+
+# Nastavení fronty a specifických from pro úlohy
+queue:
+  # Maximální počet souběžných procesů na serveru celkem.
+  # Pokud je počtu dosaženo a přijde požadavek na další sestavení,
+  # je přidán do fronty, a čeká na uvolnění místa
+  #
+  # Hodnotou -1 se nastaví neomezený počet souběžných procesů
+  maxJobs: -1
+
+  pools:
+    - name: build
+      maxJobs: 5
+
+    - name: gui
+      maxJobs: 3
+
+# Definice dostupných platforem a úloh
+platforms:
+  - name: fitkit2
+    jobs:
+      - name: build
+        displayName: Build
+        requiredFiles: [mcu, fpga]
+        queuePool: build
+        container: fitkit2
+        containerPostArgs: ['make']
+
+      - name: isim
+        displayName: Simulation (ISIM)
+        requiredFiles: [fpga_sim]
+        useX11: true
+        queuePool: gui
+        container: fitkit2
+        containerArgs: []
+        containerPostArgs: ['make', 'isim']
+
+      - name: isimcomp
+        displayName: Component simulation (ISIM)
+        userArgs:
+          - The name of the simulated component
+        requiredFiles: [fpga_sim]
+        useX11: true
+        queuePool: gui
+        container: fitkit2
+        containerArgs: []
+        containerPostArgs: ['make', 'isim']
+
+      - name: ise
+        displayName: Xilinx ISE
+        requiredFiles: [fpga, fpga_sim]
+        useX11: true
+        queuePool: gui
+        container: fitkit2
+        containerPostArgs: ['make', 'ise']

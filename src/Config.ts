@@ -1,4 +1,4 @@
-import { ServerConfig } from './model/ServerConfig';
+import { ServerConfig } from './model/Config';
 import * as os from "os";
 
 /**
