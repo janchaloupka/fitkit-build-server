@@ -1,83 +1,61 @@
-import { ServerConfig } from './model/Config';
-import { Config } from './Config';
-import { Logger } from './Logger';
-import { Server } from './connection/Server';
+import { ConfigFile } from './model/config-file';
+import { config } from "./config";
+import { Logger } from './logger';
+import { Server } from './connection/server';
 import { promises as fs} from "fs";
-import { parse as jsoncParse, ParseError } from "jsonc-parser";
 import { assertType } from "typescript-is";
+import * as yaml from "js-yaml";
+const log = new Logger();
 
-const Log = new Logger();
+/** Načíst konfigurační soubor */
+const loadConfig = async () => {
+    log.info("Parsing config");
+    const configFileRaw = await fs.readFile("config.yml", "utf8");
+    let configFile = assertType<ConfigFile>(yaml.load(configFileRaw));
 
-/**
- * Zpracovat konfigurační soubor, pokud některá věc není v configu, použít
- * výchozí možnost
- */
-const parseConfig = async () => {
-	Log.Info("Parsing config");
-	const configFile = await fs.readFile("config.jsonc", "utf8");
-	let errors: ParseError[] = [];
-	let config = jsoncParse(configFile, errors);
-
-	if(errors.length > 0){
-		Log.Error(errors);
-		throw new Error("Failed to parse config file");
-	}
-
-	Config.Port = config.Port ?? Config.Port;
-	Config.AuthPublicKeyPath = config.AuthPublicKey ?? Config.AuthPublicKeyPath;
-	Config.AuthAllowedAlg = config.AuthAllowedAlg ?? Config.AuthAllowedAlg;
-	Config.BaseFolder = config.BaseFolder ?? Config.BaseFolder;
-	Config.ProjectsFolder = config.ProjectsFolder ?? Config.ProjectsFolder;
-
-	if(config?.Build){
-		Config.Build.MaxActiveTasks = config.Build.MaxActiveTasks ?? Config.Build.MaxActiveTasks;
-	}
-
-	if(config?.Simulation){
-		Config.Simulation.MaxActiveSessions = config.Simulation.MaxActiveSessions ?? Config.Simulation.MaxActiveSessions;
-		Config.Simulation.SessionTimeout = config.Simulation.SessionTimeout ?? Config.Simulation.SessionTimeout;
-		Config.Simulation.TokenFolder = config.Simulation.TokenFolder ?? Config.Simulation.TokenFolder;
-		Config.Simulation.VncClientUrl = config.Simulation.VncClientUrl ?? Config.Simulation.VncClientUrl;
-	}
-
-	assertType<ServerConfig>(Config);
+    config.auth = configFile.auth;
+    config.containers = configFile.containers;
+    config.platforms = configFile.platforms;
+    config.port = configFile.port;
+    config.projectsFolder = configFile.projectsFolder;
+    config.queue = configFile.queue;
+    config.vnc = configFile.vnc;
 };
 
 
-// Spuštení programu
+// Spuštění serveru
 (async () => {
-	Log.Info("Starting build server");
+    log.info("Starting build server");
 
-	try{
-		await parseConfig();
-	}catch(e){
-		Log.Error("Failed to parse config file", e);
-		process.exit(1);
-	}
+    try{
+        await loadConfig();
+    }catch(e){
+        log.error("Failed to parse config file", e);
+        process.exit(1);
+    }
 
-	try{
-		Log.Info("Remove existing temp projects directory");
-		await fs.rmdir(Config.ProjectsFolder, {recursive: true});
-	}catch(e){}
+    try{
+        log.info("Remove existing projects directory");
+        await fs.rmdir(config.projectsFolder, {recursive: true});
+    }catch(e){}
 
-	try{
-		Log.Info("Remove existing novnc tokens directory");
-		await fs.rmdir(Config.Simulation.TokenFolder, {recursive: true});
-	}catch(e){}
+    try{
+        log.info("Remove existing noVNC tokens");
+        await fs.rmdir(config.vnc.tokenFolder, {recursive: true});
+    }catch(e){}
 
-	try{
-		Log.Info("Create new temp projects directory");
-		await fs.mkdir(Config.ProjectsFolder, {recursive: true});
+    try{
+        log.info("Create new projects directory");
+        await fs.mkdir(config.projectsFolder, {recursive: true});
+    }catch(e){
+        log.error("Error while creating projects directory", e);
+        throw e;
+    }
 
-	}catch(e){
-		Log.Error("Error while creating projects directory", e);
-	}
-
-	try{
-		Log.Info("Current config:", Config);
-		new Server(Config.Port);
-	}catch(e){
-		Log.Error("Application encountered critical error and will be terminated");
-		Log.Error(e);
-	}
+    try{
+        new Server(config.port);
+    }catch(e){
+        log.error("Application encountered critical error and will be terminated");
+        log.error(e);
+    }
 })();

@@ -4,4 +4,4 @@
  * Hlavní vstupní bod aplikace
  */
 
-require("./out/Main.js");
+require("./out/main.js");

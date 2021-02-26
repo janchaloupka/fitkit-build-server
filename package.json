@@ -11,19 +11,19 @@
 	"author": "Jan Chaloupka",
 	"license": "MIT",
 	"devDependencies": {
+		"@types/js-yaml": "^4.0.0",
 		"@types/jsonwebtoken": "^8.5.0",
 		"@types/mocha": "^7.0.1",
-		"@types/node": "^12.19.15",
+		"@types/node": "^12.20.4",
 		"@types/websocket": "^1.0.1",
 		"@typescript-eslint/eslint-plugin": "^2.34.0",
 		"@typescript-eslint/parser": "^2.34.0",
 		"eslint": "^6.8.0",
 		"ttypescript": "^1.5.12",
-		"typescript": "^3.9.7"
+		"typescript": "^3.9.9"
 	},
 	"dependencies": {
-		"colors": "^1.4.0",
-		"jsonc-parser": "^2.3.1",
+		"js-yaml": "^4.0.0",
 		"jsonwebtoken": "^8.5.1",
 		"typescript-is": "^0.14.1",
 		"websocket": "^1.0.33"

@@ -1,4 +1,4 @@
-import { Config } from './../../Config';
+import { Config } from '../../config';
 import { promises as fs } from "fs";
 import { join } from "path";
 

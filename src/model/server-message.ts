@@ -1,4 +1,4 @@
-import { File } from './ProjectData';
+import { File } from './project-data';
 interface MessageString {
 	type: "job_stdout" | "job_stderr" | "error";
 	data: string;

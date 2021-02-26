@@ -1,22 +1,21 @@
-import { ServerConfig } from './model/Config';
-import * as os from "os";
+import { ConfigFile } from './model/config-file';
 
-/**
- * Aktivní konfigurace serveru
- */
-export let Config: ServerConfig = {
-	Port: 9000,
-	AuthPublicKeyPath: "./jwt.key.pub",
-	AuthAllowedAlg: ["RS256", "RS384", "RS512"],
-	BaseFolder: "/opt/fitkit",
-	ProjectsFolder: "/home/build-server/",
-	Build: {
-		MaxActiveTasks: -1
-	},
-	Simulation: {
-		MaxActiveSessions: -1,
-		SessionTimeout: 0,
-		TokenFolder: "/tmp/vnc-tokens",
-		VncClientUrl: `http://${os.hostname()}:9010/`
-	}
+/** Aktivní konfigurace serveru */
+export let config: ConfigFile = {
+    port: 9000,
+    projectsFolder: "/tmp/fitkit-projects",
+    vnc: {
+        tokenFolder: "/tmp/vnc-tokens",
+        clientUrl: "http://10.69.69.13:9010/"
+    },
+    auth: {
+        publicKeyPath: "./jwt.key.pub",
+        allowedAlg: []
+    },
+    queue: {
+        maxJobs: -1,
+        pools: []
+    },
+    containers: [],
+    platforms: []
 };

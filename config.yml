@@ -39,7 +39,7 @@ auth:
 # Základní nastavení kontejneru pro běh úloh
 containers:
   # Název docker obrazu pro vytvoření kontejneru
-  - image: fitkit2
+  fitkit2:
     # Společné argumenty spuštění kontejneru
     sharedArgs: ['-i', '--rm', '--read-only', '-v', '/opt/Xilinx:/opt/Xilinx:ro']
 
@@ -53,47 +53,43 @@ queue:
   maxJobs: -1
 
   pools:
-    - name: build
-      maxJobs: 5
-
-    - name: gui
-      maxJobs: 3
+    build: 5
+    gui: 3
 
 # Definice dostupných platforem a úloh
-platforms:
-  - name: fitkit2
-    jobs:
-      - name: build
-        displayName: Build
-        requiredFiles: [mcu, fpga]
-        queuePool: build
-        container: fitkit2
-        containerPostArgs: ['make']
+jobs:
+  fitkit2:
+    build:
+      displayName: Build
+      requiredFiles: [mcu, fpga]
+      queuePool: build
+      container: fitkit2
+      containerPostArgs: ['make']
 
-      - name: isim
-        displayName: Simulation (ISIM)
-        requiredFiles: [fpga_sim]
-        useX11: true
-        queuePool: gui
-        container: fitkit2
-        containerArgs: []
-        containerPostArgs: ['make', 'isim']
+    isim:
+      displayName: Simulation (ISIM)
+      requiredFiles: [fpga_sim]
+      useX11: true
+      queuePool: gui
+      container: fitkit2
+      containerArgs: []
+      containerPostArgs: ['make', 'isim']
 
-      - name: isimcomp
-        displayName: Component simulation (ISIM)
-        userArgs:
-          - The name of the simulated component
-        requiredFiles: [fpga_sim]
-        useX11: true
-        queuePool: gui
-        container: fitkit2
-        containerArgs: []
-        containerPostArgs: ['make', 'isim']
+    isimcomp:
+      displayName: Component simulation (ISIM)
+      userArgs:
+        - The name of the simulated component
+      requiredFiles: [fpga_sim]
+      useX11: true
+      queuePool: gui
+      container: fitkit2
+      containerArgs: []
+      containerPostArgs: ['make', 'isim']
 
-      - name: ise
-        displayName: Xilinx ISE
-        requiredFiles: [fpga, fpga_sim]
-        useX11: true
-        queuePool: gui
-        container: fitkit2
-        containerPostArgs: ['make', 'ise']
+    ise:
+      displayName: Xilinx ISE
+      requiredFiles: [fpga, fpga_sim]
+      useX11: true
+      queuePool: gui
+      container: fitkit2
+      containerPostArgs: ['make', 'ise']

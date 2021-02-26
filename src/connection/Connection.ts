@@ -1,208 +1,223 @@
-import { Config } from './../Config';
+import { config } from '../config';
 import { assertType } from 'typescript-is';
-import { ClientMessage } from './../model/ClientMessage';
-import { ServerMessage } from '../model/ServerMessage';
+import { ClientMessage } from '../model/client-message';
+import { ServerMessage } from '../model/server-message';
 import { connection, IMessage } from "websocket";
 import { Simulation } from "../simulation/Simulation";
-import { Logger } from "../Logger";
-import { Build } from '../build/Build';
+import { Logger } from "../logger";
+import { Build } from '../build/build';
 import { Project } from '../project/Project';
-import { ProjectData } from "../model/ProjectData";
+import { ProjectData } from "../model/project-data";
 
 /**
  * Reprezentuje jedno aktivní spojení klienta se serverem
  */
 export class Connection{
-	/** Všechna aktivní spojení */
-	public static Active: Connection[] = [];
+    /** Všechna aktivní spojení */
+    public static active: Connection[] = [];
 
-	/** Čisté WebSocket spojení */
-	private readonly Connection: connection;
+    /** Čisté WebSocket spojení */
+    private readonly wsConnection: connection;
 
-	private readonly Log: Logger;
+    private readonly log: Logger;
 
-	// Spuštené podprocesy
-	private Simulation?: Simulation;
-	private Build?: Build;
-	private Project?: Project;
+    // Spuštěné podprocesy
+    private simulation?: Simulation;
+    private build?: Build;
+    private Project?: Project;
 
-	public constructor(connection: connection, user: string, logger?: Logger){
-		this.Log = new Logger(`${user} ${connection.remoteAddress}`, logger);
-		this.Connection = connection;
+    public constructor(connection: connection, user: string, logger?: Logger){
+        this.log = new Logger(`${user} ${connection.remoteAddress}`, logger);
+        this.wsConnection = connection;
 
-		connection.on("message", data => this.Message(data));
-		connection.on("close", code => this.Closed(code));
-		connection.on("error", err => this.Log.Error(err.toString()));
+        connection.on("message", data => this.handleMessage(data));
+        connection.on("close", code => this.closed(code));
+        connection.on("error", err => this.log.error(err.toString()));
 
-		Connection.Active.push(this);
-		this.Log.Info("Connection accepted!",`Connected clients: ${Connection.Active.length}`);
-	}
+        Connection.active.push(this);
+        this.log.info("Connection accepted!",`Connected clients: ${Connection.active.length}`);
+    }
 
-	/**
-	 * Odeslat zprávu klientovi. Pokud spojení není aktivní, nedojde k žádné akci
-	 * @param message Zpráva, která bude odeslána klientovi
-	 */
-	public Send(message: ServerMessage){
-		if(!this.Connection.connected) return;
+    /**
+     * Odeslat zprávu klientovi. Pokud spojení není aktivní, nedojde k žádné akci
+     * @param message Zpráva, která bude odeslána klientovi
+     */
+    public send(message: ServerMessage){
+        if(!this.wsConnection.connected) return;
 
-		this.Connection.sendUTF(JSON.stringify(message));
-	}
+        this.wsConnection.sendUTF(JSON.stringify(message));
+    }
 
-	/**
-	 * Zpracovat přijetou zprávu od klienta
-	 * @param data Čistá WebSocket data
-	 */
-	private async Message(data: IMessage){
-		try{
-			const msg: ClientMessage = JSON.parse(data.utf8Data?? "{}");
-			assertType<ClientMessage>(msg);
+    /**
+     * Zpracovat přijetou zprávu od klienta
+     * @param data Čistá WebSocket data
+     */
+    private async handleMessage(data: IMessage){
+        try{
+            const msg: ClientMessage = JSON.parse(data.utf8Data?? "{}");
+            assertType<ClientMessage>(msg);
 
-			switch (msg.type) {
-				case "build-begin":
-					try{
-						await this.SetupProject(msg.data);
-						this.StartBuild();
-					}catch(e){
-						this.Send({type: "error", data: e.toString()});
-						this.Log.Error("Error while setting up build task", e);
-					}
-					break;
-				case "isim-begin":
-					try{
-						await this.SetupProject(msg.data);
-						this.StartSimulation();
-					}catch(e){
-						this.Send({type: "error", data: e.toString()});
-						this.Log.Error("Error while setting up simulation", e);
-					}
-					break;
-				case "build-end":
-					this.Build?.Terminate();
-					this.Build = undefined;
-					break;
-				case "isim-end":
-					this.Simulation?.Terminate();
-					this.Simulation = undefined;
-					break;
-			}
-		}catch(e){
-			this.Log.Error("Error while processing client message", e);
-		}
-	}
+            switch (msg.type) {
+                case "get_server_stats":
 
-	/**
-	 * Vytvořit dočasný adresář se soubory projektu
-	 * @param projConf Konfigurace a zdrojové soubory projektu
-	 */
-	private async SetupProject(projConf: ProjectData){
-		if(this.Project) throw new Error("Another action is already running");
+                    break;
+                case "get_supported_jobs":
 
-		const project = new Project(projConf);
-		this.Project = project;
+                    break;
+                case "new_job":
 
-		await project.CreateDirectory();
-		this.Send({
-			type: "project-mapping",
-			data: this.Project.MapToOriginalPath
-		});
-	}
+                    break;
+                case "job_data":
 
-	/**
-	 * Vytvořit a zařadit překlad projektu do fronty
-	 */
-	private StartBuild(){
-		if(!this.Project?.Path) throw new Error("Cannot find project path");
-		if(this.Build) throw new Error("Another build is already running");
+                    break;
+                case "cancel_job":
 
-		const build = new Build(this.Project.Path, this.Log);
-		this.Build = build;
+                    break;
+                case "build-begin":
+                    try{
+                        await this.SetupProject(msg.data);
+                        this.StartBuild();
+                    }catch(e){
+                        this.Send({type: "error", data: e.toString()});
+                        this.Log.Error("Error while setting up build task", e);
+                    }
+                    break;
+                case "isim-begin":
+                    try{
+                        await this.SetupProject(msg.data);
+                        this.StartSimulation();
+                    }catch(e){
+                        this.Send({type: "error", data: e.toString()});
+                        this.Log.Error("Error while setting up simulation", e);
+                    }
+                    break;
+                case "build-end":
+                    this.Build?.Terminate();
+                    this.Build = undefined;
+                    break;
+                case "isim-end":
+                    this.Simulation?.Terminate();
+                    this.Simulation = undefined;
+                    break;
+            }
+        }catch(e){
+            this.Log.Error("Error while processing client message", e);
+        }
+    }
 
-		build.on("ready", () => this.Send({type: "build-begin"}));
-		build.on("stdout", line => this.Send({type: "build-stdout", data: line}));
-		build.on("stderr", line => this.Send({type: "build-stderr", data: line}));
-		build.on("queue", pos => this.Send({
-			type: "build-queue",
-			data: {
-				pos: pos,
-				size: Build.Queue.length
-			}
-		}));
+    /**
+     * Vytvořit dočasný adresář se soubory projektu
+     * @param projConf Konfigurace a zdrojové soubory projektu
+     */
+    private async SetupProject(projConf: ProjectData){
+        if(this.Project) throw new Error("Another action is already running");
 
-		build.on("close", res => {
-			this.Send({type: "build-end", data: res});
-			// Vyčistit atributy po ukončení úlohy
-			this.Project?.Delete();
-			this.Project = undefined;
-			this.Build = undefined;
-		});
+        const project = new Project(projConf);
+        this.Project = project;
 
-		Build.CheckQueue();
-	}
+        await project.CreateDirectory();
+        this.Send({
+            type: "project-mapping",
+            data: this.Project.MapToOriginalPath
+        });
+    }
 
-	/**
-	 * Vytvořit a zařadit simulaci projektu do fronty
-	 */
-	private StartSimulation(){
-		if(!this.Project?.Path) throw new Error("Cannot find project path");
-		if(this.Build) throw new Error("Another simulation is already running");
+    /**
+     * Vytvořit a zařadit překlad projektu do fronty
+     */
+    private StartBuild(){
+        if(!this.Project?.Path) throw new Error("Cannot find project path");
+        if(this.Build) throw new Error("Another build is already running");
 
-		const sim = new Simulation(this.Project.Path, this.Log);
-		this.Simulation = sim;
+        const build = new Build(this.Project.Path, this.Log);
+        this.Build = build;
 
-		sim.on("isimout", line => this.Send({type: "isim-stdout", data: line}));
-		sim.on("isimerr", line => this.Send({type: "isim-stderr", data: line}));
+        build.on("ready", () => this.Send({type: "build-begin"}));
+        build.on("stdout", line => this.Send({type: "build-stdout", data: line}));
+        build.on("stderr", line => this.Send({type: "build-stderr", data: line}));
+        build.on("queue", pos => this.Send({
+            type: "build-queue",
+            data: {
+                pos: pos,
+                size: Build.Queue.length
+            }
+        }));
 
-		sim.on("ready", token => this.Send({
-			type: "isim-begin",
-			data: `${Config.Simulation.VncClientUrl}?token=${token}`
-		}));
+        build.on("close", res => {
+            this.Send({type: "build-end", data: res});
+            // Vyčistit atributy po ukončení úlohy
+            this.Project?.Delete();
+            this.Project = undefined;
+            this.Build = undefined;
+        });
 
-		sim.on("queue", pos => this.Send({
-			type: "isim-queue",
-			data: {
-				pos: pos,
-				size: Simulation.Queue.length
-			}
-		}));
+        Build.CheckQueue();
+    }
 
-		sim.on("close", () => {
-			this.Send({type: "isim-end"});
-			// Vyčistit atributy po ukončení úlohy
-			this.Project?.Delete();
-			this.Project = undefined;
-			this.Simulation = undefined;
-		});
+    /**
+     * Vytvořit a zařadit simulaci projektu do fronty
+     */
+    private StartSimulation(){
+        if(!this.Project?.Path) throw new Error("Cannot find project path");
+        if(this.Build) throw new Error("Another simulation is already running");
 
-		Simulation.CheckQueue();
-	}
+        const sim = new Simulation(this.Project.Path, this.Log);
+        this.Simulation = sim;
 
-	/**
-	 * Spojení s klientem bylo ukončeno
-	 * @param code Chybový návratový kód
-	 */
-	private Closed(code: number){
-		// Odstranit klienta z pole aktivních klientů
-		Connection.Active = Connection.Active.filter(val => val !== this);
+        sim.on("isimout", line => this.Send({type: "isim-stdout", data: line}));
+        sim.on("isimerr", line => this.Send({type: "isim-stderr", data: line}));
 
-		// Zachytit mezistav, kdy se vytvořili soubory, ale nebyla spuštena žádná úloha
-		try{
-			if(!this.Build && !this.Simulation){
-				this.Project?.Delete();
-				this.Project = undefined;
-			}
-		}catch(e){
-			this.Log.Error("Error while removing project files", e);
-		}
+        sim.on("ready", token => this.Send({
+            type: "isim-begin",
+            data: `${Config.Simulation.VncClientUrl}?token=${token}`
+        }));
 
-		this.Build?.Terminate();
-		this.Build = undefined;
+        sim.on("queue", pos => this.Send({
+            type: "isim-queue",
+            data: {
+                pos: pos,
+                size: Simulation.Queue.length
+            }
+        }));
 
-		this.Simulation?.Terminate();
-		this.Simulation = undefined;
+        sim.on("close", () => {
+            this.Send({type: "isim-end"});
+            // Vyčistit atributy po ukončení úlohy
+            this.Project?.Delete();
+            this.Project = undefined;
+            this.Simulation = undefined;
+        });
 
-		// Soubory projektu se odstraní jakmile dojde k ukončení aktuální úlohy
+        Simulation.CheckQueue();
+    }
 
-		this.Log.Info(`Connection closed (${code})`);
-	}
+    /**
+     * Spojení s klientem bylo ukončeno
+     * @param code Chybový návratový kód
+     */
+    private closed(code: number){
+        // Odstranit klienta z pole aktivních klientů
+        Connection.active = Connection.active.filter(val => val !== this);
+
+        // Zachytit mezistav, kdy se vytvořily soubory, ale nebyla spuštěna žádná úloha
+        try{
+            if(!this.Build && !this.Simulation){
+                this.Project?.Delete();
+                this.Project = undefined;
+            }
+        }catch(e){
+            this.Log.Error("Error while removing project files", e);
+        }
+
+        this.Build?.Terminate();
+        this.Build = undefined;
+
+        this.Simulation?.Terminate();
+        this.Simulation = undefined;
+
+        // Soubory projektu se odstraní jakmile dojde k ukončení aktuální úlohy
+
+        this.log.info(`Connection closed (${code})`);
+    }
 
 }

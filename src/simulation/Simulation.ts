@@ -1,10 +1,10 @@
-import { Config } from './../Config';
+import { Config } from '../config';
 import { Isim } from './Isim';
 import { WindowManager } from './WindowManager';
 import { Display } from './Display';
 import { EventEmitter } from "events";
 import * as readline from "readline";
-import { Logger } from '../Logger';
+import { Logger } from '../logger';
 
 export declare interface Simulation{
 	on(event: "queue", listener: (pos: number) => void): this;

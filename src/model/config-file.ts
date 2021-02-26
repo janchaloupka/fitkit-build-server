@@ -1,7 +1,7 @@
 import { Algorithm } from "jsonwebtoken";
 
-/** Konfigurace serveru */
-export interface Config {
+/** Konfigurační soubor serveru */
+export interface ConfigFile {
     /**
      * TCP port, na kterém naslouchá WebSocket server pro přijímání požadavků
      * od klientů
@@ -51,11 +51,11 @@ export interface Config {
     /** Definice dostupných kontejnerů pro běh úloh */
     containers: {
         /** Název obrazu ze kterého se kontejner spouští */
-        image: string;
-
-        /** Argumenty kontejneru společné pro všechny úlohy */
-        sharedArgs: string[];
-    }[]
+        [image: string]: {
+            /** Argumenty kontejneru společné pro všechny úlohy */
+            sharedArgs: string[];
+        }
+    }
 
     /** Nastavení fronty úloh */
     queue: {
@@ -64,52 +64,43 @@ export interface Config {
          */
         maxJobs: number;
 
-        /** Definice zanořených front pro specifické úlohy */
-        pools: {
-            /** Název podfronty */
-            name: string;
-
-            /** Limit aktivních úloh v této podfrontě */
-            maxJobs: number;
-        }[]
+        /**
+         * Definice zanořených front pro specifické úlohy
+         * název: limit úloh
+         */
+        pools: {[name: string]: number};
     }
 
     /** Definice dostupných platforem a úloh */
-    platforms: {
-        /** Název platformy */
-        name: "fitkit2";
-
+    jobs: {
         /** Dostupné úlohy dané platformy */
-        jobs: {
+        [platform: string]: {
             /** Název úlohy */
-            name: string;
+            [name: string]: {
+                /** Zobrazovaný název úlohy pro uživatele */
+                displayName: string;
 
-            /** Zobrazovaný název úlohy pro uživatele */
-            displayName: string;
+                /** Popis argumentů pro spuštění úlohy (délka pole = počet argumentů) */
+                userArgs?: string[];
 
-            /** Popis argumentů pro spuštění úlohy (délka pole = počet argumentů) */
-            userArgs?: string[];
+                /** Typy zdrojových souborů, které jsou potřebné pro spuštění */
+                requiredFiles: ("mcu"|"fpga"|"fpga_sim")[];
 
-            /** Typ projektu pro danou úlohu */
-            projectType: "fitkit2";
+                /** Úloha pracuje s grafickým výstupem (výchozí = false) */
+                useX11?: boolean;
 
-            /** Typy zdrojových souborů, které jsou potřebné pro spuštění */
-            requiredFiles: ("mcu"|"fpga"|"fpga_sim")[];
+                /** Úloha patří do podfronty */
+                queuePool?: string;
 
-            /** Úloha pracuje s grafickým výstupem (výchozí = false) */
-            useX11?: boolean;
+                /** Kontejner použitý pro spuštění úlohy */
+                container: string;
 
-            /** Úloha patří do podfronty */
-            queuePool?: string;
+                /** Argumenty spuštění samotného kontejneru */
+                containerArgs?: string[];
 
-            /** Kontejner použitý pro spuštění úlohy */
-            container: string;
-
-            /** Argumenty spuštění samotného kontejneru */
-            containerArgs?: string[];
-
-            /** Argumenty spuštěné aplikace uvnitř kontejneru */
-            containerPostArgs: string[];
-        }[]
-    }[]
+                /** Argumenty spuštěné aplikace uvnitř kontejneru */
+                containerPostArgs: string[];
+            }
+        }
+    }
 }

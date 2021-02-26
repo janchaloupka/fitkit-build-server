@@ -1,4 +1,4 @@
-import { Logger } from './../Logger';
+import { Logger } from '../logger';
 import { EventEmitter } from "events";
 import { ChildProcessWithoutNullStreams, spawn } from "child_process";
 import { Readable } from "stream";
