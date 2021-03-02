@@ -1,12 +1,12 @@
+import { Job } from './../job/job';
+import { Queue } from './../job/queue';
 import { config } from '../config';
 import { assertType } from 'typescript-is';
 import { ClientMessage } from '../model/client-message';
 import { ServerMessage } from '../model/server-message';
 import { connection, IMessage } from "websocket";
-import { Simulation } from "../simulation/Simulation";
 import { Logger } from "../logger";
-import { Build } from '../build/build';
-import { Project } from '../project/Project';
+import { ProjectFiles } from '../job/projectFiles';
 import { ProjectData } from "../model/project-data";
 
 /**
@@ -22,9 +22,8 @@ export class Connection{
     private readonly log: Logger;
 
     // Spuštěné podprocesy
-    private simulation?: Simulation;
-    private build?: Build;
-    private Project?: Project;
+    private job?: Job;
+    private projectFiles?: ProjectFiles;
 
     public constructor(connection: connection, user: string, logger?: Logger){
         this.log = new Logger(`${user} ${connection.remoteAddress}`, logger);
@@ -54,54 +53,28 @@ export class Connection{
      */
     private async handleMessage(data: IMessage){
         try{
-            const msg: ClientMessage = JSON.parse(data.utf8Data?? "{}");
-            assertType<ClientMessage>(msg);
+            const msg = assertType<ClientMessage>(JSON.parse(data.utf8Data?? "{}"));
 
             switch (msg.type) {
                 case "get_server_stats":
-
+                    this.send(Queue.getStats());
                     break;
                 case "get_supported_jobs":
-
+                    // TODO
                     break;
                 case "new_job":
-
+                    this.queueJob(msg.name, msg.platform, msg.userArgs);
                     break;
                 case "job_data":
-
+                    await this.setupProjectFiles(msg.data);
                     break;
                 case "cancel_job":
-
-                    break;
-                case "build-begin":
-                    try{
-                        await this.SetupProject(msg.data);
-                        this.StartBuild();
-                    }catch(e){
-                        this.Send({type: "error", data: e.toString()});
-                        this.Log.Error("Error while setting up build task", e);
-                    }
-                    break;
-                case "isim-begin":
-                    try{
-                        await this.SetupProject(msg.data);
-                        this.StartSimulation();
-                    }catch(e){
-                        this.Send({type: "error", data: e.toString()});
-                        this.Log.Error("Error while setting up simulation", e);
-                    }
-                    break;
-                case "build-end":
-                    this.Build?.Terminate();
-                    this.Build = undefined;
-                    break;
-                case "isim-end":
-                    this.Simulation?.Terminate();
-                    this.Simulation = undefined;
+                    this.job?.terminate();
                     break;
             }
         }catch(e){
-            this.Log.Error("Error while processing client message", e);
+            this.log.error("Error while processing client message", e);
+            if(e) this.send({type: "error", data: e.toString()});
         }
     }
 
@@ -109,86 +82,65 @@ export class Connection{
      * Vytvořit dočasný adresář se soubory projektu
      * @param projConf Konfigurace a zdrojové soubory projektu
      */
-    private async SetupProject(projConf: ProjectData){
-        if(this.Project) throw new Error("Another action is already running");
+    private async setupProjectFiles(projConf: ProjectData){
+        const project = new ProjectFiles(projConf);
+        this.projectFiles = project;
 
-        const project = new Project(projConf);
-        this.Project = project;
+        await project.createDirectory();
+        if(!project.path){
+            throw new Error("Cannot get project path");
+        }
 
-        await project.CreateDirectory();
-        this.Send({
-            type: "project-mapping",
-            data: this.Project.MapToOriginalPath
-        });
-    }
-
-    /**
-     * Vytvořit a zařadit překlad projektu do fronty
-     */
-    private StartBuild(){
-        if(!this.Project?.Path) throw new Error("Cannot find project path");
-        if(this.Build) throw new Error("Another build is already running");
-
-        const build = new Build(this.Project.Path, this.Log);
-        this.Build = build;
-
-        build.on("ready", () => this.Send({type: "build-begin"}));
-        build.on("stdout", line => this.Send({type: "build-stdout", data: line}));
-        build.on("stderr", line => this.Send({type: "build-stderr", data: line}));
-        build.on("queue", pos => this.Send({
-            type: "build-queue",
-            data: {
-                pos: pos,
-                size: Build.Queue.length
-            }
-        }));
-
-        build.on("close", res => {
-            this.Send({type: "build-end", data: res});
-            // Vyčistit atributy po ukončení úlohy
-            this.Project?.Delete();
-            this.Project = undefined;
-            this.Build = undefined;
-        });
-
-        Build.CheckQueue();
+        this.job?.sourceFilesReady(project.path);
     }
 
     /**
      * Vytvořit a zařadit simulaci projektu do fronty
      */
-    private StartSimulation(){
-        if(!this.Project?.Path) throw new Error("Cannot find project path");
-        if(this.Build) throw new Error("Another simulation is already running");
+    private queueJob(name: string, platform: string, args: string[]){
+        if(this.job) throw new Error("Another job is already running");
 
-        const sim = new Simulation(this.Project.Path, this.Log);
-        this.Simulation = sim;
+        const job = new Job(name, platform, args, this.log);
 
-        sim.on("isimout", line => this.Send({type: "isim-stdout", data: line}));
-        sim.on("isimerr", line => this.Send({type: "isim-stderr", data: line}));
-
-        sim.on("ready", token => this.Send({
-            type: "isim-begin",
-            data: `${Config.Simulation.VncClientUrl}?token=${token}`
-        }));
-
-        sim.on("queue", pos => this.Send({
-            type: "isim-queue",
-            data: {
-                pos: pos,
-                size: Simulation.Queue.length
-            }
-        }));
-
-        sim.on("close", () => {
-            this.Send({type: "isim-end"});
-            // Vyčistit atributy po ukončení úlohy
-            this.Project?.Delete();
-            this.Project = undefined;
-            this.Simulation = undefined;
+        job.on("ready", () => {
+            this.send({type: "job_ready", requiredFiles: job.config.requiredFiles});
         });
 
-        Simulation.CheckQueue();
+        job.on("stdout", line => this.send({type: "job_stdout", data: line}));
+
+        job.on("stderr", line => this.send({type: "job_stderr", data: line}));
+
+        job.on("begin", token => this.send({
+            type: "job_begin",
+            fileMapping: this.projectFiles?.mapToOriginalPath ?? {},
+            vncUrl: `${config.vnc.clientUrl}?token=${token}`
+        }));
+
+        job.on("queue", (pos, size) => this.send({
+            type: "job_queue_status",
+            pos: pos,
+            size: size
+        }));
+
+        job.on("end", (exitCode, files) => {
+            this.send({
+                type: "job_end",
+                exitCode: exitCode,
+                files: files
+            });
+
+            this.cleanJob();
+        });
+
+        this.job = job;
+        Queue.queueJob(job);
+    }
+
+    private async cleanJob(){
+        if(!this.job) return;
+
+        this.job = undefined;
+        await this.projectFiles?.delete();
     }
 
     /**
@@ -199,23 +151,7 @@ export class Connection{
         // Odstranit klienta z pole aktivních klientů
         Connection.active = Connection.active.filter(val => val !== this);
 
-        // Zachytit mezistav, kdy se vytvořily soubory, ale nebyla spuštěna žádná úloha
-        try{
-            if(!this.Build && !this.Simulation){
-                this.Project?.Delete();
-                this.Project = undefined;
-            }
-        }catch(e){
-            this.Log.Error("Error while removing project files", e);
-        }
-
-        this.Build?.Terminate();
-        this.Build = undefined;
-
-        this.Simulation?.Terminate();
-        this.Simulation = undefined;
-
-        // Soubory projektu se odstraní jakmile dojde k ukončení aktuální úlohy
+        this.job?.terminate();
 
         this.log.info(`Connection closed (${code})`);
     }

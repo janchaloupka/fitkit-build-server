@@ -15,7 +15,7 @@ const loadConfig = async () => {
 
     config.auth = configFile.auth;
     config.containers = configFile.containers;
-    config.platforms = configFile.platforms;
+    config.jobs = configFile.jobs;
     config.port = configFile.port;
     config.projectsFolder = configFile.projectsFolder;
     config.queue = configFile.queue;

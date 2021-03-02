@@ -4,6 +4,11 @@ interface MessageString {
 	data: string;
 }
 
+interface MessageJobReady {
+    type: "job_ready";
+    requiredFiles: string[];
+}
+
 interface MessageJobStart {
     type: "job_begin";
     vncUrl?: string;
@@ -11,24 +16,24 @@ interface MessageJobStart {
     fileMapping: {[serverFile: string]: string};
 }
 
-interface MessageServerStats {
+export interface MessageServerStats {
 	type: "server_stats";
-	jobs: {
-        /** Typ úlohy */
-		name: string;
-
-        /** Zobrazovaný název typu úlohy */
-        displayName: string;
-
+	queue: {
         /** Platforma, pro kterou je úloha určena */
-        platform: string;
+        [platform: string]: {
+            /** Typ úlohy */
+            [name: string]: {
+                /** Zobrazovaný název typu úlohy */
+                displayName: string;
 
-        /** Počet běžících úloh */
-		running: number;
+                /** Počet běžících úloh */
+                running: number;
 
-		/** Počet čekajících úloh */
-		queue: number;
-	}[]
+                /** Počet čekajících úloh */
+                queue: number;
+            }
+        }
+	}
 }
 
 interface MessageAvailableJobs {
@@ -65,7 +70,7 @@ interface MessageBuildResult{
 	type: "job_end";
 
     /** Návratový kód úlohy */
-	exitCode: number;
+	exitCode?: number;
 
     /** Soubory vytvořené úlohou */
     files?: File[];
@@ -75,4 +80,4 @@ interface MessageBuildResult{
  * Websocket zpráva server -> klient
  */
 export type ServerMessage = MessageString | MessageJobStart | MessageJobQueue |
-    MessageServerStats | MessageAvailableJobs | MessageBuildResult;
+    MessageServerStats | MessageAvailableJobs | MessageBuildResult | MessageJobReady;

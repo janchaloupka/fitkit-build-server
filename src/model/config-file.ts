@@ -76,31 +76,33 @@ export interface ConfigFile {
         /** Dostupné úlohy dané platformy */
         [platform: string]: {
             /** Název úlohy */
-            [name: string]: {
-                /** Zobrazovaný název úlohy pro uživatele */
-                displayName: string;
-
-                /** Popis argumentů pro spuštění úlohy (délka pole = počet argumentů) */
-                userArgs?: string[];
-
-                /** Typy zdrojových souborů, které jsou potřebné pro spuštění */
-                requiredFiles: ("mcu"|"fpga"|"fpga_sim")[];
-
-                /** Úloha pracuje s grafickým výstupem (výchozí = false) */
-                useX11?: boolean;
-
-                /** Úloha patří do podfronty */
-                queuePool?: string;
-
-                /** Kontejner použitý pro spuštění úlohy */
-                container: string;
-
-                /** Argumenty spuštění samotného kontejneru */
-                containerArgs?: string[];
-
-                /** Argumenty spuštěné aplikace uvnitř kontejneru */
-                containerPostArgs: string[];
-            }
+            [name: string]: JobConfig
         }
     }
+}
+
+export interface JobConfig {
+    /** Zobrazovaný název úlohy pro uživatele */
+    displayName: string;
+
+    /** Popis argumentů pro spuštění úlohy (délka pole = počet argumentů) */
+    userArgs?: string[];
+
+    /** Typy zdrojových souborů, které jsou potřebné pro spuštění */
+    requiredFiles: ("mcu"|"fpga"|"fpga_sim")[];
+
+    /** Úloha pracuje s grafickým výstupem (výchozí = false) */
+    useX11?: boolean;
+
+    /** Úloha patří do podfronty */
+    queuePool?: string;
+
+    /** Kontejner použitý pro spuštění úlohy */
+    container: string;
+
+    /** Argumenty spuštění samotného kontejneru */
+    containerArgs?: string[];
+
+    /** Argumenty spuštěné aplikace uvnitř kontejneru */
+    containerPostArgs: string[];
 }

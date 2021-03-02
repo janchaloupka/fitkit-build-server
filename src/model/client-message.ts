@@ -1,4 +1,4 @@
-import { ProjectData } from './ProjectData';
+import { ProjectData } from './project-data';
 
 interface MessageRequest {
     type: "cancel_job" | "get_supported_jobs" | "get_server_stats";

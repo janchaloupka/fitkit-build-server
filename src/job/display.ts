@@ -10,11 +10,11 @@ const promiseExecFile = promisify(execFile);
 
 export declare interface Display{
     on(event: "ready", listener: (number: number) => void): this;
-    on(event: "close", listener: (code: number) => void): this;
+    on(event: "close", listener: (code?: number) => void): this;
 }
 
 /**
- * Virtuální obrazovka x11serveru pro zobrazení grafických aplikací
+ * Virtuální obrazovka X11 serveru pro zobrazení grafických aplikací
  */
 export class Display extends EventEmitter{
     /** Základní port VNC serveru */
@@ -24,6 +24,7 @@ export class Display extends EventEmitter{
     private readonly log: Logger;
     private _number?: number;
     private tokenFile?: string;
+    private terminated = false;
 
     /** Token pro připojení přes noVNC relaci */
     public readonly token: string;
@@ -57,7 +58,7 @@ export class Display extends EventEmitter{
         );
 
         this.process.stdio[3]?.addListener("data", d => this.getDisplayNumber(d));
-        this.process.on("close", code => this.closeEvent(code));
+        this.process.on("exit", code => this.closeEvent(code ?? undefined));
         // TODO timeout pokud se za rozumnou dobu nezíská číslo obrazovky
     }
 
@@ -65,7 +66,7 @@ export class Display extends EventEmitter{
      * Podproces vnc serveru byl ukončen
      * @param code Návratový kód podprocesu
      */
-    private async closeEvent(code: number){
+    private async closeEvent(code?: number){
         this.log.info(`Exited (${code})`);
 
         if(this.tokenFile){
@@ -76,6 +77,7 @@ export class Display extends EventEmitter{
             }
         }
 
+        this.terminated = true;
         this.emit("close", code);
     }
 
@@ -106,7 +108,7 @@ export class Display extends EventEmitter{
      * Ukončit podproces
      */
     public terminate(){
-        if(this.process.killed) return;
+        if(this.terminated) return;
         this.process.kill('SIGTERM');
     }
 }

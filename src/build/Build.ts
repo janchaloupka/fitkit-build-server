@@ -1,20 +1,10 @@
 import { ChildProcessWithoutNullStreams } from 'child_process';
-import { BuildResult } from './../model/BuildResult';
 import { EventEmitter } from "events";
 import * as readline from "readline";
 import { Logger } from '../logger';
 import { spawn } from "child_process";
 import { promises as fs } from "fs";
 import { join } from "path";
-import { Config } from '../config';
-
-export declare interface Build{
-    on(event: "queue", listener: (pos: number) => void): this;
-    on(event: "close", listener: (result: BuildResult) => void): this;
-    on(event: "ready", listener: () => void): this;
-    on(event: "stdout", listener: (line: string) => void): this;
-    on(event: "stderr", listener: (line: string) => void): this;
-}
 
 /**
  * Proces sestavení FITkit projektu
@@ -42,30 +32,10 @@ export class Build extends EventEmitter{
         super();
 
         this.Log = new Logger("Build", logger);
-        this.Log.Info("New build request. Path:", projectPath);
+        this.Log.info("New build request. Path:", projectPath);
         this.ProjectPath = projectPath;
 
         Build.Queue.push(this);
-    }
-
-    /**
-     * Vyvolat kontrolu fronty
-     *
-     * (pokud je volno, spustí procesy na začátku fronty)
-     */
-    public static CheckQueue(){
-        const limit = Config.Build.MaxActiveTasks;
-        while(limit === -1 || this.Active.length < limit){
-            const first = this.Queue.shift();
-            if(!first) break;
-
-            this.Active.push(first);
-            first.Start();
-        }
-
-        for (let i = 0; i < this.Queue.length; i++) {
-            this.Queue[i].emit("queue", i + 1);
-        }
     }
 
     /**
@@ -76,7 +46,7 @@ export class Build extends EventEmitter{
         Build.Queue = Build.Queue.filter(val => val !== this);
         Build.Active.push(this);
 
-        this.Log.Info("Starting build task");
+        this.Log.info("Starting build task");
         this.emit("ready");
 
         this.Process = spawn("make",
@@ -100,46 +70,29 @@ export class Build extends EventEmitter{
      * @param code Návratový kód procesu
      */
     private async CloseEvent(code: number){
-        const result: BuildResult = {
+        const result = {
             ExitStatus: code
         };
 
         if(code === 0){
             try{
                 const fpga = await fs.readFile(join(this.ProjectPath, "build", "project.bin"));
-                result.FpgaBinary = fpga.toString("base64");
-            }catch(e){ this.Log.Error("Failed to read fpga binary file", e.toString()); }
+                //result.FpgaBinary = fpga.toString("base64");
+            }catch(e){ this.Log.error("Failed to read fpga binary file", e.toString()); }
 
             try{
                 const mcuV1 = await fs.readFile(join(this.ProjectPath, "build", "project_f1xx.hex"));
-                result.McuV1Binary = mcuV1.toString("base64");
-            }catch(e){ this.Log.Error("Failed to read mcuV1 binary file", e.toString()); }
+                //result.McuV1Binary = mcuV1.toString("base64");
+            }catch(e){ this.Log.error("Failed to read mcuV1 binary file", e.toString()); }
 
             try{
                 const mcuV2 = await fs.readFile(join(this.ProjectPath, "build", "project_f2xx.hex"));
-                result.McuV2Binary = mcuV2.toString("base64");
-            }catch(e){ this.Log.Error("Failed to read mcuV2 binary file", e.toString()); }
+                //result.McuV2Binary = mcuV2.toString("base64");
+            }catch(e){ this.Log.error("Failed to read mcuV2 binary file", e.toString()); }
         }
 
-        this.Log.Info("Build finished. Exit code:", code);
+        this.Log.info("Build finished. Exit code:", code);
         this.emit("close", result);
         this.removeAllListeners("close");
-        if(!this.Terminated) this.Terminate();
-    }
-
-    /**
-     * Ukončit proces
-     */
-    public Terminate(){
-        this.Terminated = true;
-
-        // Odtranit ze seznamu aktivních sestavení a fronty, pokud ještě nebylo spuštěno
-        Build.Active = Build.Active.filter(val => val !== this);
-        Build.Queue = Build.Queue.filter(val => val !== this);
-        Build.CheckQueue();
-        this.emit("close", <BuildResult>{ExitStatus: -1});
-
-        if(this.Process?.killed) return;
-        this.Process?.kill();
     }
 }

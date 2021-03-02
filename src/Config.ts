@@ -14,8 +14,8 @@ export let config: ConfigFile = {
     },
     queue: {
         maxJobs: -1,
-        pools: []
+        pools: {}
     },
-    containers: [],
-    platforms: []
+    containers: {},
+    jobs: {}
 };
