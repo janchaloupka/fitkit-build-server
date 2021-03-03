@@ -6,7 +6,7 @@ import { ClientMessage } from '../model/client-message';
 import { ServerMessage } from '../model/server-message';
 import { connection, IMessage } from "websocket";
 import { Logger } from "../logger";
-import { ProjectFiles } from '../job/projectFiles';
+import { ProjectConfig } from '../platforms/fitkit2/project-config';
 import { ProjectData } from "../model/project-data";
 
 /**
@@ -23,7 +23,7 @@ export class Connection{
 
     // Spuštěné podprocesy
     private job?: Job;
-    private projectFiles?: ProjectFiles;
+    private projectConfig?: ProjectConfig;
 
     public constructor(connection: connection, user: string, logger?: Logger){
         this.log = new Logger(`${user} ${connection.remoteAddress}`, logger);
@@ -70,6 +70,7 @@ export class Connection{
                     break;
                 case "cancel_job":
                     this.job?.terminate();
+                    this.job = undefined;
                     break;
             }
         }catch(e){
@@ -83,8 +84,22 @@ export class Connection{
      * @param projConf Konfigurace a zdrojové soubory projektu
      */
     private async setupProjectFiles(projConf: ProjectData){
-        const project = new ProjectFiles(projConf);
-        this.projectFiles = project;
+        if(!this.job){
+            throw new Error("Cannot setup project files. No job active");
+        }
+
+        const reqFiles = this.job.config.requiredFiles;
+        if(reqFiles.includes("mcu") && !projConf.mcu){
+            throw new Error("Selected job requires MCU config and source files");
+        }
+
+        if((reqFiles.includes("fpga") || reqFiles.includes("fpga_sim")) && !projConf.fpga){
+            throw new Error("Selected job requires FPGA config and source files");
+        }
+
+        if(this.projectConfig) await this.cleanJob();
+        const project = new ProjectConfig(projConf);
+        this.projectConfig = project;
 
         await project.createDirectory();
         if(!project.path){
@@ -112,7 +127,7 @@ export class Connection{
 
         job.on("begin", token => this.send({
             type: "job_begin",
-            fileMapping: this.projectFiles?.mapToOriginalPath ?? {},
+            fileMapping: this.projectConfig?.mapToOriginalPath ?? {},
             vncUrl: `${config.vnc.clientUrl}?token=${token}`
         }));
 
@@ -137,10 +152,11 @@ export class Connection{
     }
 
     private async cleanJob(){
-        if(!this.job) return;
+        if(!this.projectConfig) return;
+        await this.projectConfig?.delete();
 
         this.job = undefined;
-        await this.projectFiles?.delete();
+        this.projectConfig = undefined;
     }
 
     /**

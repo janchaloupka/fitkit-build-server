@@ -44,7 +44,7 @@ export class Job extends EventEmitter {
 
         this.name = name;
         this.platform = platform;
-        this.userArgs = userArgs;
+        this.userArgs = userArgs; // TODO ošetřit
 
         const p = config.jobs[platform];
         if(!p) throw new Error(`Unknown platform (${platform})`);
@@ -55,6 +55,11 @@ export class Job extends EventEmitter {
 
         if(!config.containers[jobConfig.container])
             throw new Error(`Unknown container for job ${name} (${jobConfig.container})`);
+
+        const expectedArgsLen = jobConfig.userArgs?.length ?? 0;
+        if(expectedArgsLen !== userArgs.length){
+            throw new Error(`Wrong number of arguments given (expected ${expectedArgsLen}, got ${userArgs.length})`);
+        }
     }
 
     /**
@@ -93,7 +98,7 @@ export class Job extends EventEmitter {
             }
 
             // Předáme informaci o přiděleném displeji
-            args = ["-v", `/tmp/.X11-unix/X${x11num}:/tmp/.X11-unix/X0`, ...args];
+            args = ["-v", `/tmp/.X11-unix/X${x11num}:/tmp/.X11-unix/X0`, ...args, ...this.userArgs];
         }
 
         this.started = true;
